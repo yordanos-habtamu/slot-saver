@@ -48,4 +48,9 @@ return [
         'from' => env('TWILIO_FROM_NUMBER'),
     ],
 
+    'risk_service' => [
+        'url' => env('RISK_SERVICE_URL', 'http://127.0.0.1:8001'),
+        'timeout' => (float) env('RISK_SERVICE_TIMEOUT', 0.5),
+    ],
+
 ];
