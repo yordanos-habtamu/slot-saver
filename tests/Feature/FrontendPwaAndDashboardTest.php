@@ -328,6 +328,69 @@ class FrontendPwaAndDashboardTest extends TestCase
     }
 
 
+    public function test_owner_dashboard_returns_kpis_and_ledger(): void
+    {
+        $response = $this->actingAs($this->owner)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('kpis.no_show_rate')
+            ->has('kpis.recovered_revenue')
+            ->has('funnel.sent')
+            ->has('appointments')
+            ->has('waitlist')
+        );
+    }
+
+    public function test_dashboard_staff_quick_actions(): void
+    {
+        $booking = Booking::create([
+            'reference_code' => 'BK-CHECKIN01',
+            'business_id' => $this->business->id,
+            'location_id' => $this->location->id,
+            'service_id' => $this->service->id,
+            'employee_user_id' => $this->employee->id,
+            'client_user_id' => $this->client->id,
+            'status' => BookingStatus::Confirmed,
+            'start_at' => Carbon::now()->subMinutes(10),
+            'end_at' => Carbon::now()->addMinutes(35),
+            'duration_minutes' => 45,
+            'total_amount' => 45.00,
+            'currency' => 'USD',
+            'deposit_status' => 'paid',
+            'deposit_amount' => 15.00,
+        ]);
+
+        // 1. Staff Check-in
+        $response = $this->actingAs($this->owner)->postJson(route('api.bookings.check_in', ['booking' => $booking->id]));
+        $response->assertOk();
+        $this->assertEquals(BookingStatus::Completed, $booking->fresh()->status);
+
+        // 2. Staff Mark No-Show on another booking
+        $noShowBooking = Booking::create([
+            'reference_code' => 'BK-NOSHOW01',
+            'business_id' => $this->business->id,
+            'location_id' => $this->location->id,
+            'service_id' => $this->service->id,
+            'employee_user_id' => $this->employee->id,
+            'client_user_id' => $this->client->id,
+            'status' => BookingStatus::Confirmed,
+            'start_at' => Carbon::now()->subHour(),
+            'end_at' => Carbon::now()->subMinutes(15),
+            'duration_minutes' => 45,
+            'total_amount' => 45.00,
+            'currency' => 'USD',
+            'deposit_status' => 'paid',
+            'deposit_amount' => 15.00,
+        ]);
+
+        $response = $this->actingAs($this->owner)->postJson(route('api.bookings.mark_no_show', ['booking' => $noShowBooking->id]));
+        $response->assertOk();
+        $this->assertEquals(BookingStatus::NoShow, $noShowBooking->fresh()->status);
+        $this->assertEquals('forfeited', $noShowBooking->fresh()->deposit_status);
+    }
+
     public function test_offline_sync_endpoint_replays_queued_actions(): void
     {
         $booking = Booking::create([

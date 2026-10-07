@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
@@ -8,8 +9,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+// Owner & Admin Authenticated Dashboard
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
 // Public Client Booking Flow
@@ -32,6 +34,10 @@ Route::prefix('api')->group(function () {
     Route::get('booking/available-slots', [BookingController::class, 'availableSlots'])->name('api.booking.available_slots');
     Route::post('booking/risk-preview', [BookingController::class, 'riskPreview'])->name('api.booking.risk_preview');
     Route::post('booking/store', [BookingController::class, 'store'])->name('api.booking.store');
+
+    Route::post('bookings/{booking}/check-in', [DashboardController::class, 'checkIn'])->middleware('auth')->name('api.bookings.check_in');
+    Route::post('bookings/{booking}/mark-no-show', [DashboardController::class, 'markNoShow'])->middleware('auth')->name('api.bookings.mark_no_show');
+    Route::post('bookings/{booking}/send-reminder', [DashboardController::class, 'sendReminder'])->middleware('auth')->name('api.bookings.send_reminder');
 
     Route::post('offline/sync', [OfflineSyncController::class, 'sync'])->middleware('auth')->name('api.offline.sync');
 });
