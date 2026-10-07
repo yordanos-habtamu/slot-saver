@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Owner\ComputeOwnerDashboard;
 use App\Domain\Booking\Actions\MarkNoShow;
 use App\Domain\Reminders\Jobs\SendReminderJob;
 use App\Enums\BookingStatus;
-use App\Enums\HistoryAction;
 use App\Models\Booking;
-use App\Models\BookingHistory;
 use App\Models\Business;
 use App\Models\Reminder;
 use App\Models\WaitlistEntry;
@@ -26,7 +25,7 @@ class DashboardController extends Controller
     /**
      * Display the owner KPI dashboard with real analytics.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, ComputeOwnerDashboard $computeDashboard): Response
     {
         $user = $request->user();
 
@@ -34,47 +33,7 @@ class DashboardController extends Controller
 
         $businessId = $business?->id;
 
-        // Direct aggregates over recent bookings, reminders, and waitlist activity.
-        $recent = Booking::query()
-            ->when($businessId, fn ($q) => $q->where('business_id', $businessId))
-            ->where('start_at', '>=', now()->subDays(30))
-            ->get();
-
-        $completedTotal = $recent->whereIn('status', [BookingStatus::Completed, BookingStatus::NoShow])->count();
-        $noShowCount = $recent->where('status', BookingStatus::NoShow)->count();
-        $noShowRate = $completedTotal > 0 ? round($noShowCount / $completedTotal * 100, 1) : 0.0;
-
-        $baseline = 22.0;
-        $delivered = Reminder::query()->where('delivery_status', 'sent')->count();
-        $sent = Reminder::query()->count();
-
-        $dashboard = [
-            'kpis' => [
-                'no_show_rate' => $noShowRate,
-                'baseline_no_show_rate' => $baseline,
-                'reduction_percentage' => $noShowRate > 0 ? max(0, round(($baseline - $noShowRate) / $baseline * 100, 1)) : 0.0,
-                'recovered_revenue' => round((float) $recent->sum('cancellation_fee') + (float) $recent->where('deposit_status', 'forfeited')->sum('deposit_amount'), 2),
-                'refilled_slots_count' => WaitlistEntry::query()
-                    ->when($businessId, fn ($q) => $q->where('business_id', $businessId))
-                    ->where('status', 'claimed')
-                    ->count(),
-                'admin_hours_saved' => 26.5,
-            ],
-            'funnel' => [
-                'sent' => $sent,
-                'delivered' => $delivered,
-                'read' => $delivered,
-                'confirmed' => $recent->where('status', BookingStatus::Confirmed)->count(),
-                'rescheduled' => BookingHistory::query()->where('action', HistoryAction::Rescheduled->value)->count(),
-                'cancelled' => $recent->where('status', BookingStatus::Cancelled)->count(),
-                'no_show' => $noShowCount,
-            ],
-            'risk_distribution' => [
-                'low' => $recent->where('risk_tier', 'low')->count(),
-                'medium' => $recent->where('risk_tier', 'medium')->count(),
-                'high' => $recent->where('risk_tier', 'high')->count(),
-            ],
-        ];
+        $dashboard = $computeDashboard->handle($business);
 
         // Appointments for ledger
         $appointments = Booking::query()
