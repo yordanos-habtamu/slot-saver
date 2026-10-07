@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,11 @@ Route::prefix('webhooks')->group(function () {
     Route::get('whatsapp', [WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify');
     Route::post('whatsapp', [WhatsAppWebhookController::class, 'handle'])->name('webhooks.whatsapp.handle');
 });
+
+// Waitlist Auto-Fill Endpoints
+Route::post('api/waitlist/join', [WaitlistController::class, 'join'])->middleware('auth')->name('waitlist.join');
+Route::get('waitlist/claim/{token}', [WaitlistController::class, 'showOffer'])->name('waitlist.claim.show');
+Route::post('waitlist/claim/{token}', [WaitlistController::class, 'claim'])->name('waitlist.claim.execute');
 
 require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';
