@@ -46,4 +46,5 @@ Route::prefix('api')->group(function () {
 });
 
 require __DIR__.'/admin.php';
+require __DIR__.'/owner.php';
 require __DIR__.'/settings.php';
