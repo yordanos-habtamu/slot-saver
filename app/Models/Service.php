@@ -209,6 +209,9 @@ class Service extends Model
     {
         $reviews = $this->reviews()->where('is_published', true)->get(['rating', 'would_recommend']);
 
+        // Reload first so the dirty check below compares against current DB values.
+        $this->refresh();
+
         $this->forceFill([
             'rating_count' => $reviews->count(),
             'rating_average' => $reviews->count() > 0
