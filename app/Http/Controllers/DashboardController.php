@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Owner\ComputeOwnerDashboard;
 use App\Domain\Booking\Actions\MarkNoShow;
+use App\Models\User;
 use App\Domain\Reminders\Jobs\SendReminderJob;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
@@ -12,6 +13,7 @@ use App\Models\Reminder;
 use App\Models\WaitlistEntry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,6 +30,10 @@ class DashboardController extends Controller
     public function index(Request $request, ComputeOwnerDashboard $computeDashboard): Response
     {
         $user = $request->user();
+
+        if ($user !== null && $user->isEmployee()) {
+            return $this->employeeDashboard($request, $user);
+        }
 
         $business = $user?->ownedBusinesses()->first() ?? Business::query()->first();
 
@@ -72,6 +78,61 @@ class DashboardController extends Controller
             'risk_distribution' => $dashboard['risk_distribution'],
             'appointments' => $appointments,
             'waitlist' => $waitlist,
+        ]);
+    }
+
+    /**
+     * Employee branch of /dashboard — personal schedule for the selected day.
+     */
+    private function employeeDashboard(Request $request, User $user): Response
+    {
+        $day = today();
+        if ($request->filled('date')) {
+            try {
+                $day = Carbon::parse($request->query('date'))->startOfDay();
+            } catch (\Throwable) {
+                $day = today();
+            }
+        }
+
+        $appointments = Booking::query()
+            ->where('employee_user_id', $user->id)
+            ->whereBetween('start_at', [$day, $day->copy()->endOfDay()])
+            ->with(['client', 'service', 'employee', 'location'])
+            ->orderBy('start_at')
+            ->get();
+
+        $countStatus = fn (BookingStatus $status) => $appointments->where('status', $status)->count();
+
+        return Inertia::render('employee/dashboard', [
+            'profile' => [
+                'name' => $user->name,
+                'rating_average' => (float) ($user->rating_average ?? 0),
+                'rating_count' => (int) ($user->rating_count ?? 0),
+                'locations' => $user->locations()
+                    ->wherePivot('is_active', true)
+                    ->get()
+                    ->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'city' => $l->city]),
+                'services' => $user->services()
+                    ->get()
+                    ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]),
+            ],
+            'selected_date' => $day->toDateString(),
+            'today' => now()->toDateString(),
+            'summary' => [
+                'total' => $appointments->count(),
+                'completed' => $countStatus(BookingStatus::Completed),
+                'no_show' => $countStatus(BookingStatus::NoShow),
+                'cancelled' => $countStatus(BookingStatus::Cancelled),
+                'remaining' => $appointments->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed])->count(),
+                'week_total' => Booking::query()
+                    ->where('employee_user_id', $user->id)
+                    ->where('start_at', '>=', now())
+                    ->where('start_at', '<=', now()->addDays(7))
+                    ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed])
+                    ->count(),
+            ],
+            'appointments' => $appointments->map(fn ($b) => $this->ledgerItem($b)),
         ]);
     }
 

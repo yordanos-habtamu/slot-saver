@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     Building2,
+    CalendarDays,
     FolderGit2,
     LayoutGrid,
 } from 'lucide-react';
@@ -38,6 +39,14 @@ const adminNavItems: NavItem[] = [
     },
 ];
 
+const employeeNavItems: NavItem[] = [
+    {
+        title: 'My Schedule',
+        href: dashboard(),
+        icon: CalendarDays,
+    },
+];
+
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -54,7 +63,11 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     const { auth } = usePage().props;
     const items: NavItem[] =
-        auth.user?.role === 'admin' ? [...mainNavItems, ...adminNavItems] : mainNavItems;
+        auth.user?.role === 'admin'
+            ? [...mainNavItems, ...adminNavItems]
+            : auth.user?.role === 'employee'
+              ? employeeNavItems
+              : mainNavItems;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
