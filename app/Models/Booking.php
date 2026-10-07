@@ -64,13 +64,25 @@ use Illuminate\Support\Str;
     'start_at',
     'end_at',
     'duration_minutes',
+    'buffer_minutes',
     'party_size',
     'client_note',
     'internal_note',
     'service_price',
     'booking_fee',
+    'deposit_amount',
+    'deposit_status',
+    'deposit_paid_at',
+    'risk_score',
+    'risk_tier',
     'total_amount',
     'currency',
+    'cancellation_fee',
+    'cancelled_at',
+    'cancelled_by_user_id',
+    'cancellation_reason',
+    'confirmed_at',
+    'completed_at',
 ])]
 class Booking extends Model
 {
@@ -91,10 +103,14 @@ class Booking extends Model
             'cancelled_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'completed_at' => 'datetime',
+            'deposit_paid_at' => 'datetime',
             'duration_minutes' => 'integer',
+            'buffer_minutes' => 'integer',
             'party_size' => 'integer',
             'service_price' => 'decimal:2',
             'booking_fee' => 'decimal:2',
+            'deposit_amount' => 'decimal:2',
+            'risk_score' => 'decimal:4',
             'total_amount' => 'decimal:2',
             'cancellation_fee' => 'decimal:2',
         ];
@@ -174,6 +190,22 @@ class Booking extends Model
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);
+    }
+
+    /**
+     * @return HasMany<Reminder, $this>
+     */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
+    }
+
+    /**
+     * @return HasMany<WaitlistEntry, $this>
+     */
+    public function freedWaitlistOffers(): HasMany
+    {
+        return $this->hasMany(WaitlistEntry::class, 'freed_booking_id');
     }
 
     /**
