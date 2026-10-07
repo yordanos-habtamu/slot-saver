@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Booking\Actions\CreateBooking;
+use App\Domain\Booking\Actions\VerifySlotAvailability;
 use App\Domain\Booking\Data\BookingData;
+use App\Domain\Booking\Exceptions\LocationClosedException;
 use App\Domain\Booking\Exceptions\SlotAlreadyBookedException;
 use App\Domain\Risk\DepositPolicy;
 use App\Domain\Risk\RiskScoreClient;
 use App\Models\Booking;
 use App\Models\Business;
+use App\Models\LocationClosure;
+use App\Models\LocationOpeningHour;
 use App\Models\Location;
 use App\Models\Service;
 use App\Models\User;
@@ -76,6 +80,30 @@ class BookingController extends Controller
                     'city' => $loc->city,
                     'is_active' => $loc->is_active,
                     'max_capacity' => $loc->max_capacity,
+                    'opening_hours' => $loc->openingHours()
+                        ->orderBy('day_of_week')
+                        ->get()
+                        ->map(fn (LocationOpeningHour $hours) => [
+                            'day_of_week' => $hours->day_of_week,
+                            'opens_at' => substr($hours->opens_at, 0, 5),
+                            'closes_at' => substr($hours->closes_at, 0, 5),
+                            'is_closed' => $hours->is_closed,
+                        ]),
+                    'upcoming_closures' => $loc->closures()
+                        ->where(function ($query): void {
+                            $query->whereDate('ends_on', '>=', now()->toDateString())
+                                ->orWhere(function ($subQuery): void {
+                                    $subQuery->whereNull('ends_on')
+                                        ->whereDate('starts_on', '>=', now()->toDateString());
+                                });
+                        })
+                        ->orderBy('starts_on')
+                        ->get()
+                        ->map(fn (LocationClosure $closure) => [
+                            'starts_on' => $closure->starts_on->toDateString(),
+                            'ends_on' => $closure->ends_on?->toDateString(),
+                            'reason' => $closure->reason,
+                        ]),
                     'opens_at' => $loc->opens_at ? substr((string) $loc->opens_at, 0, 5) : null,
                     'closes_at' => $loc->closes_at ? substr((string) $loc->closes_at, 0, 5) : null,
                     'employee_ids' => $loc->employees->pluck('id'),
@@ -117,15 +145,20 @@ class BookingController extends Controller
 
         $targetDate = Carbon::parse($validated['date']);
 
-        // Location hours
+        // Location schedule: inactive flag, closures and weekly opening hours
         if (! $location->is_active) {
             return $this->closedDayResponse($targetDate, 'This location is not accepting bookings.');
         }
 
-        $window = [
-            'opens' => $location->opens_at ? substr((string) $location->opens_at, 0, 5) : '09:00',
-            'closes' => $location->closes_at ? substr((string) $location->closes_at, 0, 5) : '19:00',
-        ];
+        $closure = $location->closureOn($targetDate);
+        if ($closure !== null) {
+            return $this->closedDayResponse($targetDate, $closure->label());
+        }
+
+        $window = $location->openingWindowFor($targetDate);
+        if ($window === null) {
+            return $this->closedDayResponse($targetDate, 'The location is closed on this day.');
+        }
 
         $openTime = Carbon::parse($targetDate->toDateString().' '.$window['opens']);
         $closeTime = Carbon::parse($targetDate->toDateString().' '.$window['closes']);
@@ -138,7 +171,7 @@ class BookingController extends Controller
             ->whereDate('start_at', $targetDate->toDateString())
             ->get(['id', 'start_at', 'end_at', 'buffer_minutes', 'employee_user_id']);
 
-        $capacity = (int) $location->max_capacity;
+        $capacity = app(VerifySlotAvailability::class)->capacityFor($location, $service);
         $selectedEmployeeId = ! empty($validated['employee_user_id']) ? (int) $validated['employee_user_id'] : null;
 
         $slots = [];
@@ -348,6 +381,11 @@ class BookingController extends Controller
                 'status' => 'conflict',
                 'message' => $e->getMessage(),
             ], 409);
+        } catch (LocationClosedException $e) {
+            return response()->json([
+                'status' => 'location_closed',
+                'message' => $e->getMessage(),
+            ], 422);
         }
     }
 

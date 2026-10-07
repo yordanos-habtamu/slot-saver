@@ -9,6 +9,8 @@ use App\Models\Booking;
 use App\Models\Business;
 use App\Models\BusinessType;
 use App\Models\Location;
+use App\Models\LocationClosure;
+use App\Models\LocationOpeningHour;
 use App\Models\Reminder;
 use App\Models\Review;
 use App\Models\Service;
@@ -72,6 +74,42 @@ class DemoBusinessSeeder extends Seeder
             ]
         );
 
+        // Weekly schedule: open Tue–Sat 09:00–18:00, closed Sun+Mon (ISO days 1 = Monday .. 7 = Sunday)
+        $weeklySchedule = [
+            ['day_of_week' => 1, 'is_closed' => true],  // Monday
+            ['day_of_week' => 2, 'is_closed' => false], // Tuesday
+            ['day_of_week' => 3, 'is_closed' => false], // Wednesday
+            ['day_of_week' => 4, 'is_closed' => false], // Thursday
+            ['day_of_week' => 5, 'is_closed' => false], // Friday
+            ['day_of_week' => 6, 'is_closed' => false], // Saturday
+            ['day_of_week' => 7, 'is_closed' => true],  // Sunday
+        ];
+
+        foreach ($weeklySchedule as $day) {
+            LocationOpeningHour::firstOrCreate(
+                ['location_id' => $location->id, 'day_of_week' => $day['day_of_week']],
+                [
+                    'opens_at' => '09:00:00',
+                    'closes_at' => '18:00:00',
+                    'is_closed' => $day['is_closed'],
+                ]
+            );
+        }
+
+        // Example day-off closures: a public holiday and a summer break
+        LocationClosure::firstOrCreate(
+            ['location_id' => $location->id, 'starts_on' => now()->addDays(12)->toDateString()],
+            ['ends_on' => null, 'reason' => 'City holiday — Praça do Comércio festival']
+        );
+
+        LocationClosure::firstOrCreate(
+            ['location_id' => $location->id, 'starts_on' => now()->addWeeks(6)->toDateString()],
+            [
+                'ends_on' => now()->addWeeks(6)->addDays(4)->toDateString(),
+                'reason' => 'Summer break — team off',
+            ]
+        );
+
         // Seed 3 Barbers
         $barbers = collect([
             ['name' => 'André Rocha', 'email' => 'andre@crownblade.test'],
@@ -119,7 +157,18 @@ class DemoBusinessSeeder extends Seeder
         });
 
         // Seed Client Pool (40 clients)
-        $clients = collect(range(1, 40))->map(function ($i) {
+        $clientPreferences = [
+            'Sensitive scalp — use fragrance-free products and a soft brush. Prefers quiet appointments, no small talk.',
+            'Always books with André. Likes the scissor-over-comb length on top, fades a 1 on the sides. Offer espresso on arrival.',
+            'Allergic to products containing alcohol. Prefers afternoon slots after 16:00 and wants a text reminder the same day.',
+            'Loyal regular since the baseline era — 5-star history, zero no-shows. Prefers the chair by the window.',
+            'Running late often — call before the appointment to confirm. Beard must be shaped with a straight razor only.',
+            'First-timer nervous about fades — talk them through each step. Prefers a longer consultation before cutting.',
+            'Brings kids — needs the earliest slot of the day and a chair with space for the stroller.',
+            'Prefers hot towel finishes and no clippers on the neck. Water at room temperature only.',
+        ];
+
+        $clients = collect(range(1, 40))->map(function ($i) use ($clientPreferences) {
             $client = User::firstOrCreate(
                 ['email' => "client{$i}@example.com"],
                 [
@@ -130,6 +179,10 @@ class DemoBusinessSeeder extends Seeder
                     'password' => bcrypt('password'),
                 ]
             );
+
+            if ($client->preferences === null) {
+                $client->update(['preferences' => $clientPreferences[($i - 1) % count($clientPreferences)]]);
+            }
 
             return $client;
         });

@@ -144,4 +144,22 @@ class Business extends Model
     {
         $query->where('status', BusinessStatus::Active->value);
     }
+
+    /**
+     * Recalculate the cached rating aggregates from published reviews.
+     */
+    public function recalculateRatings(): void
+    {
+        $reviews = $this->reviews()->where('is_published', true)->get(['rating']);
+
+        // Reload first so the dirty check below compares against current DB values.
+        $this->refresh();
+
+        $this->forceFill([
+            'rating_count' => $reviews->count(),
+            'rating_average' => $reviews->count() > 0
+                ? round((float) $reviews->avg('rating'), 2)
+                : null,
+        ])->save();
+    }
 }

@@ -28,6 +28,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $avatar_path
  * @property string|null $timezone
  * @property string|null $address
+ * @property string|null $preferences
+ * @property string|null $rating_average
+ * @property int $rating_count
  * @property string $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -42,8 +45,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Booking> $cancelledBookings
  * @property-read Collection<int, BookingHistory> $bookingHistory
  * @property-read Collection<int, Review> $reviews
+ * @property-read Collection<int, Booking> $staffBookings
  */
-#[Fillable(['name', 'email', 'password', 'phone', 'timezone', 'address'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'timezone', 'address', 'preferences'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
@@ -61,6 +65,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'rating_average' => 'decimal:2',
+            'rating_count' => 'integer',
             /* @chisel-2fa */
             'two_factor_confirmed_at' => 'datetime',
             /* @end-chisel-2fa */
@@ -135,6 +141,39 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'client_user_id');
+    }
+
+    /**
+     * Appointments where this user is the assigned staff member.
+     *
+     * @return HasMany<Booking, $this>
+     */
+    public function staffBookings(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'employee_user_id');
+    }
+
+    /**
+     * Recalculate the cached employee rating from published reviews
+     * on appointments this user performed.
+     */
+    public function recalculateRatingAggregate(): void
+    {
+        $ratings = Review::query()
+            ->join('bookings', 'reviews.booking_id', '=', 'bookings.id')
+            ->where('bookings.employee_user_id', $this->id)
+            ->where('reviews.is_published', true)
+            ->pluck('reviews.rating');
+
+        // Reload first so the dirty check below compares against current DB values.
+        $this->refresh();
+
+        $this->forceFill([
+            'rating_count' => $ratings->count(),
+            'rating_average' => $ratings->count() > 0
+                ? round((float) $ratings->avg(), 2)
+                : null,
+        ])->save();
     }
 
     public function isAdmin(): bool

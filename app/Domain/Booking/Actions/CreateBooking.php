@@ -3,6 +3,7 @@
 namespace App\Domain\Booking\Actions;
 
 use App\Domain\Booking\Data\BookingData;
+use App\Domain\Booking\Exceptions\LocationClosedException;
 use App\Domain\Booking\Exceptions\SlotAlreadyBookedException;
 use App\Enums\BookingStatus;
 use App\Enums\HistoryAction;
@@ -20,6 +21,7 @@ class CreateBooking
      * Create an appointment with race-condition resilience and reminder scheduling.
      *
      * @throws SlotAlreadyBookedException
+     * @throws LocationClosedException
      */
     public function execute(BookingData $data): Booking
     {
@@ -33,15 +35,14 @@ class CreateBooking
 
         $endAt = $data->startAt->copy()->addMinutes($duration);
 
-        // Application-level guard: employee conflict detection
-        $hasConflict = Booking::query()
-            ->where('employee_user_id', $data->employeeUserId)
-            ->overlapping($data->startAt, $endAt)
-            ->exists();
-
-        if ($hasConflict) {
-            throw new SlotAlreadyBookedException('The selected employee is not available for this time window.');
-        }
+        // Application-level guard: opening hours, closures, employee conflicts, capacity
+        app(VerifySlotAvailability::class)->execute(
+            $location,
+            $service,
+            $data->startAt,
+            $endAt,
+            $data->employeeUserId,
+        );
 
         $status = $data->depositAmount > 0 && $data->depositStatus !== 'paid'
             ? BookingStatus::Pending

@@ -29,16 +29,15 @@ class RescheduleBooking
         $employeeId = $newEmployeeId ?? $booking->employee_user_id;
         $newEndAt = $newStartAt->copy()->addMinutes($booking->duration_minutes);
 
-        // Pre-check employee conflict detection
-        $hasConflict = Booking::query()
-            ->where('employee_user_id', $employeeId)
-            ->whereKeyNot($booking->id)
-            ->overlapping($newStartAt, $newEndAt)
-            ->exists();
-
-        if ($hasConflict) {
-            throw new SlotAlreadyBookedException('The selected employee is not available for this time window.');
-        }
+        // Pre-check opening hours, closures, employee conflicts and capacity
+        app(VerifySlotAvailability::class)->execute(
+            $booking->location,
+            $booking->service,
+            $newStartAt,
+            $newEndAt,
+            $employeeId,
+            ignoreBookingId: $booking->id,
+        );
 
         return DB::transaction(function () use ($booking, $newStartAt, $newEndAt, $employeeId) {
             try {

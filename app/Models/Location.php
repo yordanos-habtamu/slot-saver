@@ -39,6 +39,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Collection<int, User> $employees
  * @property-read Collection<int, Service> $services
  * @property-read Collection<int, Booking> $bookings
+ * @property-read Collection<int, LocationOpeningHour> $openingHours
+ * @property-read Collection<int, LocationClosure> $closures
  */
 #[Fillable([
     'business_id',
@@ -78,6 +80,14 @@ class Location extends Model
             'max_bookings_per_day' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Virtual address accessor.
+     */
+    public function getAddressAttribute(): string
+    {
+        return $this->address_line1 ?? '';
     }
 
     /**
@@ -126,6 +136,93 @@ class Location extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Weekly opening hours (one row per weekday, ISO day 1 = Monday).
+     *
+     * @return HasMany<LocationOpeningHour, $this>
+     */
+    public function openingHours(): HasMany
+    {
+        return $this->hasMany(LocationOpeningHour::class);
+    }
+
+    /**
+     * One-off or multi-day closures (holidays, vacations, days off).
+     *
+     * @return HasMany<LocationClosure, $this>
+     */
+    public function closures(): HasMany
+    {
+        return $this->hasMany(LocationClosure::class);
+    }
+
+    /**
+     * Whether the owner has configured an explicit weekly schedule.
+     * Unconfigured locations keep the legacy behaviour (open every day).
+     */
+    public function hasScheduleConfigured(): bool
+    {
+        return $this->openingHours()->exists();
+    }
+
+    /**
+     * The closure covering the given date, if any.
+     */
+    public function closureOn(CarbonInterface $date): ?LocationClosure
+    {
+        return $this->closures()
+            ->whereDate('starts_on', '<=', $date->toDateString())
+            ->where(function (Builder $query) use ($date): void {
+                $query->whereNull('ends_on')
+                    ->orWhereDate('ends_on', '>=', $date->toDateString());
+            })
+            ->first();
+    }
+
+    /**
+     * The operating window for the given date, or null when the location is closed.
+     *
+     * Returns ['opens' => 'H:i', 'closes' => 'H:i'].
+     * An inactive location or a covered closure is always closed. When an explicit
+     * weekly schedule exists, weekdays without a row are closed. Without a schedule,
+     * the legacy location hours (or the 09:00–18:00 platform default) apply.
+     *
+     * @return array{opens: string, closes: string}|null
+     */
+    public function openingWindowFor(CarbonInterface $date): ?array
+    {
+        if (! $this->is_active) {
+            return null;
+        }
+
+        if ($this->closureOn($date) !== null) {
+            return null;
+        }
+
+        $hours = $this->openingHours()->forDay($date)->first();
+
+        if ($hours !== null) {
+            return $hours->window();
+        }
+
+        if ($this->hasScheduleConfigured()) {
+            return null;
+        }
+
+        return [
+            'opens' => $this->opens_at !== null ? substr($this->opens_at, 0, 5) : '09:00',
+            'closes' => $this->closes_at !== null ? substr($this->closes_at, 0, 5) : '18:00',
+        ];
+    }
+
+    /**
+     * Whether the location accepts bookings on the given date (ignoring time of day).
+     */
+    public function isOpenOn(CarbonInterface $date): bool
+    {
+        return $this->openingWindowFor($date) !== null;
     }
 
     /**
