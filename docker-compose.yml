@@ -1,0 +1,163 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    container_name: slotsaver-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: slotsaver
+      DB_USERNAME: slotsaver_user
+      DB_PASSWORD: slotsaver_secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RISK_SERVICE_URL: http://risk-service:8001
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      risk-service:
+        condition: service_healthy
+    networks:
+      - slotsaver-network
+
+  queue-worker:
+    build:
+      context: .
+      target: dev
+    container_name: slotsaver-queue-worker
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: slotsaver
+      DB_USERNAME: slotsaver_user
+      DB_PASSWORD: slotsaver_secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RISK_SERVICE_URL: http://risk-service:8001
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      app:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - slotsaver-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: slotsaver-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: slotsaver
+      POSTGRES_USER: slotsaver_user
+      POSTGRES_PASSWORD: slotsaver_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./docker/postgres/primary-init.sh:/docker-entrypoint-initdb.d/01-primary-init.sh
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slotsaver_user -d slotsaver"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slotsaver-network
+
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: slotsaver-postgres-replica
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: slotsaver_secret
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./docker/postgres/replica-init.sh:/replica-init.sh
+    command: ["/bin/sh", "/replica-init.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - slotsaver-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: slotsaver-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - slotsaver-network
+
+  risk-service:
+    build:
+      context: ./risk-service
+      dockerfile: Dockerfile
+    container_name: slotsaver-risk-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      MODEL_PATH: model/model.joblib
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slotsaver-network
+
+  metabase:
+    image: metabase/metabase:v0.49.0
+    container_name: slotsaver-metabase
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: h2
+      MB_DB_FILE: /metabase-data/metabase.db
+    volumes:
+      - metabase_data:/metabase-data
+    depends_on:
+      postgres-replica:
+        condition: service_started
+    networks:
+      - slotsaver-network
+
+volumes:
+  postgres_data:
+  postgres_replica_data:
+  redis_data:
+  metabase_data:
+
+networks:
+  slotsaver-network:
+    driver: bridge
