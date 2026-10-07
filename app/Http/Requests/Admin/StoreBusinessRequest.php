@@ -6,7 +6,6 @@ use App\Concerns\PasswordValidationRules;
 use App\Models\BusinessType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class StoreBusinessRequest extends FormRequest
@@ -51,20 +50,36 @@ class StoreBusinessRequest extends FormRequest
      *
      * @return array{
      *     business_type_id: int,
-     *     business: array<string, mixed>,
-     *     owner: array<string, mixed>,
+     *     business: array{name: string, email: string, phone?: string|null, about?: string|null, website?: string|null, address_line1: string, address_line2?: string|null, city: string, state?: string|null, country: string, postal_code?: string|null, timezone: string},
+     *     owner: array{name: string, email: string, password: string},
      *     location: array{name: string|null, address_line1: string|null},
      * }
      */
     public function payload(): array
     {
-        /** @var array<string, mixed> $validated */
         $validated = $this->validated();
 
         return [
             'business_type_id' => $validated['business']['business_type_id'],
-            'business' => Arr::except($validated['business'], 'business_type_id'),
-            'owner' => $validated['owner'],
+            'business' => [
+                'name' => $validated['business']['name'],
+                'email' => $validated['business']['email'],
+                'phone' => $validated['business']['phone'] ?? null,
+                'about' => $validated['business']['about'] ?? null,
+                'website' => $validated['business']['website'] ?? null,
+                'address_line1' => $validated['business']['address_line1'],
+                'address_line2' => $validated['business']['address_line2'] ?? null,
+                'city' => $validated['business']['city'],
+                'state' => $validated['business']['state'] ?? null,
+                'country' => $validated['business']['country'],
+                'postal_code' => $validated['business']['postal_code'] ?? null,
+                'timezone' => $validated['business']['timezone'],
+            ],
+            'owner' => [
+                'name' => $validated['owner']['name'],
+                'email' => $validated['owner']['email'],
+                'password' => $validated['owner']['password'],
+            ],
             'location' => [
                 'name' => $validated['location']['name'] ?? null,
                 'address_line1' => $validated['location']['address_line1'] ?? null,

@@ -42,8 +42,8 @@ class RegisterBusiness
 
             $location = Location::create([
                 'business_id' => $business->id,
-                'name' => $attributes['location']['name'] ?: 'Main Location',
-                'address_line1' => $attributes['location']['address_line1'] ?: $business->address_line1,
+                'name' => ($attributes['location']['name'] ?? null) ?: 'Main Location',
+                'address_line1' => ($attributes['location']['address_line1'] ?? null) ?: $business->address_line1,
                 'address_line2' => $business->address_line2,
                 'city' => $business->city,
                 'state' => $business->state,
