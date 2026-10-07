@@ -5,6 +5,7 @@ import {
     CalendarDays,
     FolderGit2,
     LayoutGrid,
+    Scissors,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -19,8 +20,9 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import adminBusinesses from '@/routes/admin/businesses';
 import { dashboard } from '@/routes';
+import adminBusinesses from '@/routes/admin/businesses';
+import { index as bookIndex } from '@/routes/booking';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -47,6 +49,19 @@ const employeeNavItems: NavItem[] = [
     },
 ];
 
+const clientNavItems: NavItem[] = [
+    {
+        title: 'My Appointments',
+        href: dashboard(),
+        icon: CalendarDays,
+    },
+    {
+        title: 'Book a Visit',
+        href: bookIndex(),
+        icon: Scissors,
+    },
+];
+
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -67,7 +82,9 @@ export function AppSidebar() {
             ? [...mainNavItems, ...adminNavItems]
             : auth.user?.role === 'employee'
               ? employeeNavItems
-              : mainNavItems;
+              : auth.user?.role === 'client'
+                ? clientNavItems
+                : mainNavItems;
 
     return (
         <Sidebar collapsible="icon" variant="inset">

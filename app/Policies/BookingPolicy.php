@@ -44,10 +44,18 @@ class BookingPolicy
     }
 
     /**
-     * The business owner, or an employee assigned to the booking or its location.
+     * The admin, the business owner, or an employee assigned to the booking or its location.
      */
     protected function staff(User $user, Booking $booking): bool
     {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($booking->business->owner_user_id === $user->id) {
+            return true;
+        }
+
         if ($booking->employee_user_id === $user->id) {
             return true;
         }

@@ -47,7 +47,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Review> $reviews
  * @property-read Collection<int, Booking> $staffBookings
  */
-#[Fillable(['name', 'email', 'password', 'phone', 'timezone', 'address', 'preferences'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'timezone', 'address', 'preferences', 'role'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {

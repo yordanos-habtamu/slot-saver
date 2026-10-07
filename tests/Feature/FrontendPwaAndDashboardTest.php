@@ -204,8 +204,6 @@ class FrontendPwaAndDashboardTest extends TestCase
             'service_id' => $this->service->id,
             'employee_user_id' => $this->employee->id,
             'start_at' => $startAt,
-            'client_name' => $this->client->name,
-            'client_email' => $this->client->email,
             'client_phone' => '+351912999888',
             'deposit_confirmed' => false,
         ]);
@@ -239,8 +237,6 @@ class FrontendPwaAndDashboardTest extends TestCase
             'service_id' => $this->service->id,
             'employee_user_id' => $this->employee->id,
             'start_at' => $startAt,
-            'client_name' => $this->client->name,
-            'client_email' => $this->client->email,
             'client_phone' => '+351912999888',
             'deposit_confirmed' => true,
         ]);
@@ -326,7 +322,6 @@ class FrontendPwaAndDashboardTest extends TestCase
             ->where('offer.is_claimable', true)
         );
     }
-
 
     public function test_owner_dashboard_returns_kpis_and_ledger(): void
     {

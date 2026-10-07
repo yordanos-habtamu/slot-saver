@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Actions\Owner\ComputeOwnerDashboard;
 use App\Domain\Booking\Actions\MarkNoShow;
-use App\Models\User;
 use App\Domain\Reminders\Jobs\SendReminderJob;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Business;
 use App\Models\Reminder;
+use App\Models\User;
 use App\Models\WaitlistEntry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,10 +35,13 @@ class DashboardController extends Controller
             return $this->employeeDashboard($request, $user);
         }
 
+        if ($user !== null && $user->isClient()) {
+            return $this->clientDashboard($user);
+        }
+
         $business = $user?->ownedBusinesses()->first() ?? Business::query()->first();
 
         $businessId = $business?->id;
-
         $dashboard = $computeDashboard->handle($business);
 
         // Appointments for ledger
@@ -78,6 +81,61 @@ class DashboardController extends Controller
             'risk_distribution' => $dashboard['risk_distribution'],
             'appointments' => $appointments,
             'waitlist' => $waitlist,
+        ]);
+    }
+
+    /**
+     * Client branch of /dashboard — personal booking history, spend and reviews.
+     */
+    private function clientDashboard(User $user): Response
+    {
+        $bookings = Booking::query()
+            ->where('client_user_id', $user->id)
+            ->with(['service', 'location', 'business', 'employee', 'review'])
+            ->orderBy('start_at', 'desc')
+            ->get();
+
+        $upcoming = $bookings
+            ->filter(fn ($b) => $b->start_at->isFuture()
+                && ($b->status === BookingStatus::Pending || $b->status === BookingStatus::Confirmed))
+            ->sortBy('start_at')
+            ->values();
+
+        $completed = $bookings->where('status', BookingStatus::Completed);
+        $past = $bookings
+            ->filter(fn ($b) => $b->status->isFinal() || ! $b->start_at->isFuture())
+            ->values();
+
+        $item = fn ($b) => [
+            'id' => $b->id,
+            'reference_code' => $b->reference_code,
+            'business_name' => $b->business->name,
+            'service_name' => $b->service->name,
+            'location_name' => $b->location->name,
+            'employee_name' => $b->employee->name ?? '',
+            'start_at' => $b->start_at->toIso8601String(),
+            'end_at' => $b->end_at->toIso8601String(),
+            'status' => $b->status->value,
+            'total_amount' => (float) $b->total_amount,
+            'cancellation_fee' => (float) ($b->cancellation_fee ?? 0),
+            'deposit_status' => $b->deposit_status ?? 'none',
+            'rating' => $b->review?->rating,
+            'reviewable' => $b->status === BookingStatus::Completed && $b->review === null,
+        ];
+
+        return Inertia::render('client/dashboard', [
+            'profile' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'summary' => [
+                'upcoming' => $upcoming->count(),
+                'visits' => $completed->count(),
+                'total_spent' => round((float) $completed->sum('total_amount'), 2),
+                'cancellation_fees' => round((float) $bookings->sum('cancellation_fee'), 2),
+            ],
+            'upcoming' => $upcoming->map($item),
+            'past' => $past->map($item)->values(),
         ]);
     }
 

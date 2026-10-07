@@ -11,15 +11,14 @@ use App\Domain\Risk\DepositPolicy;
 use App\Domain\Risk\RiskScoreClient;
 use App\Models\Booking;
 use App\Models\Business;
+use App\Models\Location;
 use App\Models\LocationClosure;
 use App\Models\LocationOpeningHour;
-use App\Models\Location;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -80,6 +79,9 @@ class BookingController extends Controller
                     'city' => $loc->city,
                     'is_active' => $loc->is_active,
                     'max_capacity' => $loc->max_capacity,
+                    'opens_at' => $loc->opens_at ? substr((string) $loc->opens_at, 0, 5) : null,
+                    'closes_at' => $loc->closes_at ? substr((string) $loc->closes_at, 0, 5) : null,
+                    'employee_ids' => $loc->employees->pluck('id'),
                     'opening_hours' => $loc->openingHours()
                         ->orderBy('day_of_week')
                         ->get()
@@ -104,9 +106,6 @@ class BookingController extends Controller
                             'ends_on' => $closure->ends_on?->toDateString(),
                             'reason' => $closure->reason,
                         ]),
-                    'opens_at' => $loc->opens_at ? substr((string) $loc->opens_at, 0, 5) : null,
-                    'closes_at' => $loc->closes_at ? substr((string) $loc->closes_at, 0, 5) : null,
-                    'employee_ids' => $loc->employees->pluck('id'),
                 ]),
                 'services' => $business->services->where('is_active', true)->values()->map(fn ($srv) => [
                     'id' => $srv->id,
@@ -301,8 +300,6 @@ class BookingController extends Controller
             'service_id' => 'required|exists:services,id',
             'employee_user_id' => 'nullable|exists:users,id',
             'start_at' => 'required|date|after:now',
-            'client_name' => 'required|string|max:255',
-            'client_email' => 'required|email|max:255',
             'client_phone' => 'nullable|string|max:30',
             'client_note' => 'nullable|string|max:1000',
             'deposit_confirmed' => 'nullable|boolean',
@@ -312,13 +309,8 @@ class BookingController extends Controller
         $service = Service::query()->whereKey($validated['service_id'])->firstOrFail();
         $startAt = Carbon::parse($validated['start_at']);
 
-        // Public PWA flow: identify the client by email, creating the account on first visit.
-        $client = User::query()->where('email', $validated['client_email'])->first()
-            ?? User::query()->create([
-                'name' => $validated['client_name'],
-                'email' => $validated['client_email'],
-                'password' => Hash::make('password'),
-            ]);
+        // Bookings are account-bound: the signed-in client is the booker.
+        $client = $request->user();
 
         if (! empty($validated['client_phone']) && $client->phone !== $validated['client_phone']) {
             $client->update(['phone' => $validated['client_phone']]);
@@ -376,16 +368,16 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'redirect_url' => route('booking.confirmation', ['reference_code' => $booking->reference_code]),
             ], 201);
-        } catch (SlotAlreadyBookedException $e) {
-            return response()->json([
-                'status' => 'conflict',
-                'message' => $e->getMessage(),
-            ], 409);
         } catch (LocationClosedException $e) {
             return response()->json([
                 'status' => 'location_closed',
                 'message' => $e->getMessage(),
             ], 422);
+        } catch (SlotAlreadyBookedException $e) {
+            return response()->json([
+                'status' => 'conflict',
+                'message' => $e->getMessage(),
+            ], 409);
         }
     }
 

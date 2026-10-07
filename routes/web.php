@@ -33,14 +33,13 @@ Route::post('waitlist/claim/{token}', [WaitlistController::class, 'claim'])->nam
 // Client & Staff API Endpoints
 Route::prefix('api')->group(function () {
     Route::get('booking/available-slots', [BookingController::class, 'availableSlots'])->name('api.booking.available_slots');
-    Route::post('booking/risk-preview', [BookingController::class, 'riskPreview'])->name('api.booking.risk_preview');
-    Route::post('booking/store', [BookingController::class, 'store'])->name('api.booking.store');
+    Route::post('booking/risk-preview', [BookingController::class, 'riskPreview'])->middleware('auth')->name('api.booking.risk_preview');
+    Route::post('booking/store', [BookingController::class, 'store'])->middleware('auth')->name('api.booking.store');
+    Route::post('bookings/{booking}/review', [ReviewController::class, 'store'])->middleware('auth')->name('api.bookings.review');
 
     Route::post('bookings/{booking}/check-in', [DashboardController::class, 'checkIn'])->middleware('auth')->name('api.bookings.check_in');
     Route::post('bookings/{booking}/mark-no-show', [DashboardController::class, 'markNoShow'])->middleware('auth')->name('api.bookings.mark_no_show');
     Route::post('bookings/{booking}/send-reminder', [DashboardController::class, 'sendReminder'])->middleware('auth')->name('api.bookings.send_reminder');
-
-    Route::post('bookings/{booking}/review', [ReviewController::class, 'store'])->middleware('auth')->name('api.bookings.review');
 
     Route::post('offline/sync', [OfflineSyncController::class, 'sync'])->middleware('auth')->name('api.offline.sync');
 });
