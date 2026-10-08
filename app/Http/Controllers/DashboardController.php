@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Admin\ComputePlatformOverview;
 use App\Actions\Owner\ComputeOwnerDashboard;
 use App\Domain\Booking\Actions\MarkNoShow;
 use App\Domain\Reminders\Jobs\SendReminderJob;
@@ -11,10 +12,10 @@ use App\Models\Business;
 use App\Models\Reminder;
 use App\Models\User;
 use App\Models\WaitlistEntry;
+use App\Policies\BookingPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,8 +28,11 @@ class DashboardController extends Controller
     /**
      * Display the owner KPI dashboard with real analytics.
      */
-    public function index(Request $request, ComputeOwnerDashboard $computeDashboard): Response
-    {
+    public function index(
+        Request $request,
+        ComputeOwnerDashboard $computeDashboard,
+        ComputePlatformOverview $platformOverview
+    ): Response {
         $user = $request->user();
 
         if ($user !== null && $user->isEmployee()) {
@@ -37,6 +41,10 @@ class DashboardController extends Controller
 
         if ($user !== null && $user->isClient()) {
             return $this->clientDashboard($user);
+        }
+
+        if ($user !== null && $user->isAdmin()) {
+            return $this->adminOverview($platformOverview);
         }
 
         $business = $user?->ownedBusinesses()->first() ?? Business::query()->first();
@@ -74,6 +82,7 @@ class DashboardController extends Controller
             'business' => [
                 'id' => $business?->id,
                 'name' => $business->name ?? 'Aurora Hair Studio',
+                'slug' => $business?->slug,
                 'city' => $business->city ?? 'Lisbon',
             ],
             'kpis' => $dashboard['kpis'],
@@ -136,6 +145,24 @@ class DashboardController extends Controller
             ],
             'upcoming' => $upcoming->map($item),
             'past' => $past->map($item)->values(),
+        ]);
+    }
+
+    /**
+     * Super admin branch of /dashboard — platform-wide metrics across every
+     * business, with no staff quick actions.
+     */
+    private function adminOverview(ComputePlatformOverview $platformOverview): Response
+    {
+        $platform = $platformOverview->handle();
+
+        return Inertia::render('admin/overview', [
+            'kpis' => $platform['kpis'],
+            'funnel' => $platform['funnel'],
+            'risk_distribution' => $platform['risk_distribution'],
+            'summary' => $platform['summary'],
+            'top_businesses' => $platform['top_businesses'],
+            'recent_bookings' => $platform['recent_bookings'],
         ]);
     }
 
@@ -223,9 +250,9 @@ class DashboardController extends Controller
     /**
      * Mark an appointment as checked in / completed.
      */
-    public function checkIn(Booking $booking): JsonResponse
+    public function checkIn(Request $request, Booking $booking): JsonResponse
     {
-        Gate::authorize('update', $booking);
+        abort_unless((new BookingPolicy)->manageStatus($request->user(), $booking), 403);
 
         $booking->update([
             'status' => BookingStatus::Completed,
@@ -242,9 +269,9 @@ class DashboardController extends Controller
     /**
      * Mark an appointment as No-Show and trigger deposit forfeiture.
      */
-    public function markNoShow(Booking $booking): JsonResponse
+    public function markNoShow(Request $request, Booking $booking): JsonResponse
     {
-        Gate::authorize('update', $booking);
+        abort_unless((new BookingPolicy)->manageStatus($request->user(), $booking), 403);
 
         $updated = $this->markNoShow->execute($booking);
 
@@ -259,9 +286,9 @@ class DashboardController extends Controller
     /**
      * Dispatch WhatsApp reminder immediately.
      */
-    public function sendReminder(Booking $booking): JsonResponse
+    public function sendReminder(Request $request, Booking $booking): JsonResponse
     {
-        Gate::authorize('update', $booking);
+        abort_unless((new BookingPolicy)->manageStatus($request->user(), $booking), 403);
 
         $reminder = Reminder::create([
             'booking_id' => $booking->id,
