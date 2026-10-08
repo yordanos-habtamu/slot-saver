@@ -1,119 +1,119 @@
 {
-  "$schema": "https://metabase.com/schemas/dashboard-export.json",
-  "version": "1.0.0",
-  "dashboard": {
-    "name": "SlotSaver: Executive Attendance & Revenue Recovery Analytics",
-    "description": "Comprehensive BI analytics tracking longitudinal no-show reduction, multi-channel reminder conversion rates, waitlist refill velocity, and recovered revenue.",
-    "parameters": [
-      {
-        "id": "date_range",
-        "name": "Date Range",
-        "slug": "date_range",
-        "type": "date/all-options",
-        "default": "past26weeks"
-      },
-      {
-        "id": "business_filter",
-        "name": "Business",
-        "slug": "business_filter",
-        "type": "string/=",
-        "default": "Crown & Blade Barbershop"
-      }
-    ],
-    "cards": [
-      {
-        "id": "card_01_no_show_trend",
-        "name": "26-Week No-Show Rate Longitudinal Trend",
-        "description": "Weekly no-show percentage demonstrating transition from baseline (22%) to full SlotSaver suite (<5%).",
-        "display": "line",
-        "visualization_settings": {
-          "graph.dimensions": ["week"],
-          "graph.metrics": ["no_show_rate_pct"],
-          "graph.goal_value": 5.0,
-          "graph.show_goal": true,
-          "graph.goal_label": "Target SLA (<5%)"
-        },
-        "dataset_query": {
-          "type": "native",
-          "native": {
-            "query": "SELECT DATE_TRUNC('week', b.start_at) AS week, COUNT(*) AS total_appointments, COUNT(CASE WHEN b.status = 'no_show' THEN 1 END) AS no_shows, ROUND(100.0 * COUNT(CASE WHEN b.status = 'no_show' THEN 1 END) / NULLIF(COUNT(*), 0), 2) AS no_show_rate_pct FROM bookings b JOIN businesses bus ON b.business_id = bus.id WHERE b.start_at >= NOW() - INTERVAL '26 weeks' GROUP BY DATE_TRUNC('week', b.start_at) ORDER BY week ASC;",
-            "template-tags": {}
-          },
-          "database": 1
-        }
-      },
-      {
-        "id": "card_02_recovered_revenue",
-        "name": "Recovered Revenue by Service via Waitlist Cascade",
-        "description": "Direct revenue saved by automatically re-monetizing cancelled appointments through 15-minute waitlist holds.",
-        "display": "bar",
-        "visualization_settings": {
-          "graph.dimensions": ["service_name"],
-          "graph.metrics": ["total_recovered_amount"],
-          "graph.colors": ["#10b981"]
-        },
-        "dataset_query": {
-          "type": "native",
-          "native": {
-            "query": "SELECT s.name AS service_name, COUNT(w.id) AS refilled_slots_count, SUM(s.price) AS total_recovered_amount, ROUND(AVG(s.price), 2) AS avg_ticket_price FROM waitlist_entries w JOIN services s ON w.service_id = s.id WHERE w.status = 'claimed' GROUP BY s.name ORDER BY total_recovered_amount DESC;",
-            "template-tags": {}
-          },
-          "database": 1
-        }
-      },
-      {
-        "id": "card_03_reminder_funnel",
-        "name": "Multi-Channel Reminder Funnel & Handset Delivery",
-        "description": "Delivery receipts, confirmation ratios, and interactive button conversions across WhatsApp touchpoints.",
-        "display": "funnel",
-        "visualization_settings": {
-          "funnel.dimension": "stage",
-          "funnel.metric": "volume"
-        },
-        "dataset_query": {
-          "type": "native",
-          "native": {
-            "query": "SELECT r.delivery_status AS stage, COUNT(*) AS volume, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM reminders), 1) AS pct_of_total FROM reminders r GROUP BY r.delivery_status ORDER BY volume DESC;",
-            "template-tags": {}
-          },
-          "database": 1
-        }
-      },
-      {
-        "id": "card_04_refill_velocity",
-        "name": "Waitlist Refill Velocity (Minutes to Claim)",
-        "description": "Speed at which cancelled slots are accepted by waitlisted candidates during the 15-minute window.",
-        "display": "scalar",
-        "visualization_settings": {
-          "scalar.suffix": " mins avg"
-        },
-        "dataset_query": {
-          "type": "native",
-          "native": {
-            "query": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (w.updated_at - w.created_at)) / 60)::numeric, 1) AS avg_claim_minutes FROM waitlist_entries w WHERE w.status = 'claimed';",
-            "template-tags": {}
-          },
-          "database": 1
-        }
-      },
-      {
-        "id": "card_05_deposit_coverage",
-        "name": "Attendance Risk Tier & Deposit Compliance",
-        "description": "Distribution of appointments by predicted ML risk score tier and hold deposit status.",
-        "display": "pie",
-        "visualization_settings": {
-          "pie.dimension": "risk_tier",
-          "pie.metric": "booking_count"
-        },
-        "dataset_query": {
-          "type": "native",
-          "native": {
-            "query": "SELECT COALESCE(b.risk_tier, 'low') AS risk_tier, COUNT(*) AS booking_count, SUM(CASE WHEN b.deposit_status = 'paid' THEN 1 ELSE 0 END) AS deposits_collected, SUM(CASE WHEN b.deposit_status = 'forfeited' THEN b.deposit_amount ELSE 0 END) AS forfeited_amount FROM bookings b GROUP BY b.risk_tier ORDER BY booking_count DESC;",
-            "template-tags": {}
-          },
-          "database": 1
-        }
-      }
-    ]
-  }
+    "$schema": "https://metabase.com/schemas/dashboard-export.json",
+    "version": "1.0.0",
+    "dashboard": {
+        "name": "SlotSaver: Executive Attendance & Revenue Recovery Analytics",
+        "description": "Comprehensive BI analytics tracking longitudinal no-show reduction, multi-channel reminder conversion rates, waitlist refill velocity, and recovered revenue.",
+        "parameters": [
+            {
+                "id": "date_range",
+                "name": "Date Range",
+                "slug": "date_range",
+                "type": "date/all-options",
+                "default": "past26weeks"
+            },
+            {
+                "id": "business_filter",
+                "name": "Business",
+                "slug": "business_filter",
+                "type": "string/=",
+                "default": "Crown & Blade Barbershop"
+            }
+        ],
+        "cards": [
+            {
+                "id": "card_01_no_show_trend",
+                "name": "26-Week No-Show Rate Longitudinal Trend",
+                "description": "Weekly no-show percentage demonstrating transition from baseline (22%) to full SlotSaver suite (<5%).",
+                "display": "line",
+                "visualization_settings": {
+                    "graph.dimensions": ["week"],
+                    "graph.metrics": ["no_show_rate_pct"],
+                    "graph.goal_value": 5.0,
+                    "graph.show_goal": true,
+                    "graph.goal_label": "Target SLA (<5%)"
+                },
+                "dataset_query": {
+                    "type": "native",
+                    "native": {
+                        "query": "SELECT DATE_TRUNC('week', b.start_at) AS week, COUNT(*) AS total_appointments, COUNT(CASE WHEN b.status = 'no_show' THEN 1 END) AS no_shows, ROUND(100.0 * COUNT(CASE WHEN b.status = 'no_show' THEN 1 END) / NULLIF(COUNT(*), 0), 2) AS no_show_rate_pct FROM bookings b JOIN businesses bus ON b.business_id = bus.id WHERE b.start_at >= NOW() - INTERVAL '26 weeks' GROUP BY DATE_TRUNC('week', b.start_at) ORDER BY week ASC;",
+                        "template-tags": {}
+                    },
+                    "database": 1
+                }
+            },
+            {
+                "id": "card_02_recovered_revenue",
+                "name": "Recovered Revenue by Service via Waitlist Cascade",
+                "description": "Direct revenue saved by automatically re-monetizing cancelled appointments through 15-minute waitlist holds.",
+                "display": "bar",
+                "visualization_settings": {
+                    "graph.dimensions": ["service_name"],
+                    "graph.metrics": ["total_recovered_amount"],
+                    "graph.colors": ["#10b981"]
+                },
+                "dataset_query": {
+                    "type": "native",
+                    "native": {
+                        "query": "SELECT s.name AS service_name, COUNT(w.id) AS refilled_slots_count, SUM(s.price) AS total_recovered_amount, ROUND(AVG(s.price), 2) AS avg_ticket_price FROM waitlist_entries w JOIN services s ON w.service_id = s.id WHERE w.status = 'claimed' GROUP BY s.name ORDER BY total_recovered_amount DESC;",
+                        "template-tags": {}
+                    },
+                    "database": 1
+                }
+            },
+            {
+                "id": "card_03_reminder_funnel",
+                "name": "Multi-Channel Reminder Funnel & Handset Delivery",
+                "description": "Delivery receipts, confirmation ratios, and interactive button conversions across WhatsApp touchpoints.",
+                "display": "funnel",
+                "visualization_settings": {
+                    "funnel.dimension": "stage",
+                    "funnel.metric": "volume"
+                },
+                "dataset_query": {
+                    "type": "native",
+                    "native": {
+                        "query": "SELECT r.delivery_status AS stage, COUNT(*) AS volume, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM reminders), 1) AS pct_of_total FROM reminders r GROUP BY r.delivery_status ORDER BY volume DESC;",
+                        "template-tags": {}
+                    },
+                    "database": 1
+                }
+            },
+            {
+                "id": "card_04_refill_velocity",
+                "name": "Waitlist Refill Velocity (Minutes to Claim)",
+                "description": "Speed at which cancelled slots are accepted by waitlisted candidates during the 15-minute window.",
+                "display": "scalar",
+                "visualization_settings": {
+                    "scalar.suffix": " mins avg"
+                },
+                "dataset_query": {
+                    "type": "native",
+                    "native": {
+                        "query": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (w.updated_at - w.created_at)) / 60)::numeric, 1) AS avg_claim_minutes FROM waitlist_entries w WHERE w.status = 'claimed';",
+                        "template-tags": {}
+                    },
+                    "database": 1
+                }
+            },
+            {
+                "id": "card_05_deposit_coverage",
+                "name": "Attendance Risk Tier & Deposit Compliance",
+                "description": "Distribution of appointments by predicted ML risk score tier and hold deposit status.",
+                "display": "pie",
+                "visualization_settings": {
+                    "pie.dimension": "risk_tier",
+                    "pie.metric": "booking_count"
+                },
+                "dataset_query": {
+                    "type": "native",
+                    "native": {
+                        "query": "SELECT COALESCE(b.risk_tier, 'low') AS risk_tier, COUNT(*) AS booking_count, SUM(CASE WHEN b.deposit_status = 'paid' THEN 1 ELSE 0 END) AS deposits_collected, SUM(CASE WHEN b.deposit_status = 'forfeited' THEN b.deposit_amount ELSE 0 END) AS forfeited_amount FROM bookings b GROUP BY b.risk_tier ORDER BY booking_count DESC;",
+                        "template-tags": {}
+                    },
+                    "database": 1
+                }
+            }
+        ]
+    }
 }

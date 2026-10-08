@@ -1,7 +1,7 @@
 # SlotSaver 💈
 
 > **Intelligent Appointment Attendance & Revenue Recovery Platform**  
-> *Proven -79% No-Show Reduction (21.8% $\rightarrow$ 4.5%) • €4,850/mo Recovered Revenue • Zero Manual Phone Calls*
+> _Proven -79% No-Show Reduction (21.8% $\rightarrow$ 4.5%) • €4,850/mo Recovered Revenue • Zero Manual Phone Calls_
 
 [![CI Pipeline](https://github.com/slotsaver/slotsaver/actions/workflows/ci.yml/badge.svg)](https://github.com/slotsaver/slotsaver/actions/workflows/ci.yml)
 [![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php)](https://php.net)
@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20(btree__gist)-4169E1?logo=postgresql)](https://postgresql.org)
+[![PostgreSQL](<https://img.shields.io/badge/PostgreSQL-16%20(btree__gist)-4169E1?logo=postgresql>)](https://postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)](https://redis.io)
 
 ---
@@ -19,6 +19,7 @@
 Appointment-based service businesses (barbershops, dental clinics, physical therapy studios) bleed margins through **unnotified client no-shows** and **unfilled last-minute cancellations**. Traditional phone calls waste 14+ hours of staff time each week, while blanket non-refundable deposits alienate loyal regulars and depress booking conversions by 38%.
 
 **SlotSaver** replaces manual phone calls and paper waitlists with an autonomous, high-converting platform:
+
 1. **Engine-Level Concurrency:** PostgreSQL `btree_gist` exclusion constraints eliminate double bookings at the database engine level.
 2. **Interactive WhatsApp Pipeline:** 48h, 24h, and 2h touchpoints with native 1-tap interactive buttons (`[Confirm]`, `[Reschedule]`, `[Cancel]`) and HMAC-verified idempotent webhooks.
 3. **Machine Learning Risk Scoring:** An explainable Python FastAPI microservice calculates no-show probability $P(\text{no-show})$, dynamically requiring €15 hold deposits **only** on high-risk slots ($P \ge 0.65$), while exempting VIP regulars.
@@ -30,14 +31,16 @@ Appointment-based service businesses (barbershops, dental clinics, physical ther
 ## 🚀 Quick Start (Local Development)
 
 ### Prerequisites
+
 - PHP 8.4+ & Composer
 - Node.js 22+ & npm
 - Python 3.12+ & `uv` or `pip`
 - PostgreSQL 16+ & Redis
 
 ### 1. Clone & Setup Backend
+
 ```bash
-git clone https://github.com/your-username/slotsaver.git
+git clone https://github.com/yordanos-habtamu/slotsaver.git
 cd slotsaver
 
 # Install PHP dependencies
@@ -55,6 +58,7 @@ php artisan db:seed --class=DemoBusinessSeeder
 ```
 
 ### 2. Setup Python Risk Microservice
+
 ```bash
 cd risk-service
 python3 -m venv .venv
@@ -66,6 +70,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
 ### 3. Setup Frontend Assets
+
 ```bash
 # Return to repository root
 npm install
@@ -73,6 +78,7 @@ npm run build
 ```
 
 ### 4. Serve the Application
+
 ```bash
 # Start background queue worker
 php artisan queue:work --tries=3 &
@@ -80,6 +86,7 @@ php artisan queue:work --tries=3 &
 # Start Laravel development server
 php artisan serve --port 8000
 ```
+
 Visit **[`http://localhost:8000/dashboard`](http://localhost:8000/dashboard)** to access the Owner KPI Dashboard, or **[`http://localhost:8000/book`](http://localhost:8000/book)** to explore the public booking flow.
 
 ---
@@ -87,18 +94,19 @@ Visit **[`http://localhost:8000/dashboard`](http://localhost:8000/dashboard)** t
 ## 🐳 Docker Compose Deployment
 
 To spin up all 7 production-ready containers (Laravel app, queue worker, PostgreSQL primary, PostgreSQL read-replica, Redis, Python risk microservice, and Metabase BI):
+
 ```bash
 docker compose up -d --build
 ```
 
-| Service | Port | Description |
-| :--- | :--- | :--- |
-| **Laravel App** | `http://localhost:8000` | Main application & public booking PWA |
-| **Risk Microservice** | `http://localhost:8001` | FastAPI ML scoring endpoint (`/score`, `/health`) |
-| **Metabase BI** | `http://localhost:3000` | Analytics dashboards querying read-replica |
-| **PostgreSQL Primary** | `5432` | OLTP transactional database |
-| **PostgreSQL Replica** | `5433` | Read-only streaming standby replica |
-| **Redis** | `6379` | Queue broker and cache |
+| Service                | Port                    | Description                                       |
+| :--------------------- | :---------------------- | :------------------------------------------------ |
+| **Laravel App**        | `http://localhost:8000` | Main application & public booking PWA             |
+| **Risk Microservice**  | `http://localhost:8001` | FastAPI ML scoring endpoint (`/score`, `/health`) |
+| **Metabase BI**        | `http://localhost:3000` | Analytics dashboards querying read-replica        |
+| **PostgreSQL Primary** | `5432`                  | OLTP transactional database                       |
+| **PostgreSQL Replica** | `5433`                  | Read-only streaming standby replica               |
+| **Redis**              | `6379`                  | Queue broker and cache                            |
 
 ---
 
@@ -168,11 +176,12 @@ slotsaver/
 - **[Operational Runbook](docs/runbook.md):** Health checks, queue sweeps, and disaster recovery.
 - **[Demo Credentials](docs/demo-credentials.md):** Test accounts and guided exploration walkthrough.
 - **[Architecture Decision Records](docs/adr/):**
-  - [ADR 001: WhatsApp over SMS](docs/adr/001-whatsapp-over-sms.md)
-  - [ADR 002: Dynamic Risk Deposits](docs/adr/002-dynamic-deposit-prompt.md)
-  - [ADR 003: Offline PWA & IndexedDB](docs/adr/003-offline-pwa-indexeddb.md)
+    - [ADR 001: WhatsApp over SMS](docs/adr/001-whatsapp-over-sms.md)
+    - [ADR 002: Dynamic Risk Deposits](docs/adr/002-dynamic-deposit-prompt.md)
+    - [ADR 003: Offline PWA & IndexedDB](docs/adr/003-offline-pwa-indexeddb.md)
 
 ---
 
 ## 📄 License
+
 MIT License. Built for local business owners who deserve full chairs.

@@ -38,7 +38,7 @@ export function openOfflineDB(): Promise<IDBDatabase> {
 export async function queueOfflineAction(
     type: 'check_in' | 'mark_no_show',
     bookingId: number,
-    payload?: Record<string, any>
+    payload?: Record<string, any>,
 ): Promise<string> {
     const db = await openOfflineDB();
     const id = `action_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -60,7 +60,9 @@ export async function queueOfflineAction(
     });
 }
 
-export async function getQueuedOfflineActions(): Promise<QueuedOfflineAction[]> {
+export async function getQueuedOfflineActions(): Promise<
+    QueuedOfflineAction[]
+> {
     const db = await openOfflineDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readonly');

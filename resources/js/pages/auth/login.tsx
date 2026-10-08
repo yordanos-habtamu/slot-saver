@@ -16,7 +16,13 @@ import { request } from '@/routes/password';
 /* @chisel-passkeys */
 import PasskeyVerify from '@/components/passkey-verify';
 /* @end-chisel-passkeys */
-import { Sparkles, Shield, UserCheck, Scissors, ArrowRight } from 'lucide-react';
+import {
+    Sparkles,
+    Shield,
+    UserCheck,
+    Scissors,
+    ArrowRight,
+} from 'lucide-react';
 
 type Props = {
     status?: string;
@@ -99,39 +105,40 @@ export default function Login({ status, canResetPassword }: Props) {
 
             {/* Quick 1-Click Demo Login Bar */}
             <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4">
-                <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                <div className="mb-2.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-neutral-400 uppercase">
                         <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
                         1-Click Demo Test Drives
                     </span>
-                    <span className="text-[11px] text-neutral-400">Pass: password</span>
+                    <span className="text-[11px] text-neutral-400">
+                        Pass: password
+                    </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     {DEMO_PRESETS.map((preset) => {
-                        const Icon = preset.icon;
                         const isSelected = activePreset === preset.email;
                         return (
                             <button
                                 key={preset.email}
                                 type="button"
                                 onClick={() => handleApplyPreset(preset.email)}
-                                className={`group flex flex-col text-left p-2.5 rounded-lg border transition-all ${
+                                className={`group flex flex-col rounded-lg border p-2.5 text-left transition-all ${
                                     isSelected
                                         ? 'border-cyan-500 bg-cyan-950/30 shadow-md shadow-cyan-500/10'
                                         : 'border-neutral-800 bg-neutral-900/60 hover:border-neutral-700 hover:bg-neutral-800/50'
                                 }`}
                             >
-                                <div className="flex items-center justify-between w-full mb-1">
-                                    <span className="text-xs font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+                                <div className="mb-1 flex w-full items-center justify-between">
+                                    <span className="truncate text-xs font-medium text-white transition-colors group-hover:text-cyan-400">
                                         {preset.name}
                                     </span>
                                     <span
-                                        className={`inline-flex items-center text-[10px] px-1.5 py-0.2 rounded border font-semibold ${preset.color}`}
+                                        className={`py-0.2 inline-flex items-center rounded border px-1.5 text-[10px] font-semibold ${preset.color}`}
                                     >
                                         {preset.badge}
                                     </span>
                                 </div>
-                                <span className="text-[11px] text-neutral-400 truncate">
+                                <span className="truncate text-[11px] text-neutral-400">
                                     {preset.email}
                                 </span>
                             </button>
@@ -142,7 +149,10 @@ export default function Login({ status, canResetPassword }: Props) {
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-neutral-300 text-xs font-medium">
+                    <Label
+                        htmlFor="email"
+                        className="text-xs font-medium text-neutral-300"
+                    >
                         Email Address
                     </Label>
                     <Input
@@ -156,20 +166,23 @@ export default function Login({ status, canResetPassword }: Props) {
                         placeholder="you@example.com"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
-                        className="bg-neutral-950/70 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        className="border-neutral-800 bg-neutral-950/70 text-white placeholder:text-neutral-600 focus:border-cyan-500 focus:ring-cyan-500/20"
                     />
                     <InputError message={errors.email} />
                 </div>
 
                 <div className="grid gap-2">
                     <div className="flex items-center justify-between">
-                        <Label htmlFor="password" className="text-neutral-300 text-xs font-medium">
+                        <Label
+                            htmlFor="password"
+                            className="text-xs font-medium text-neutral-300"
+                        >
                             Password
                         </Label>
                         {canResetPassword && (
                             <TextLink
                                 href={request()}
-                                className="text-xs text-neutral-400 hover:text-cyan-400 transition-colors"
+                                className="text-xs text-neutral-400 transition-colors hover:text-cyan-400"
                                 tabIndex={5}
                             >
                                 Forgot password?
@@ -185,7 +198,7 @@ export default function Login({ status, canResetPassword }: Props) {
                         placeholder="••••••••"
                         value={data.password}
                         onChange={(e) => setData('password', e.target.value)}
-                        className="bg-neutral-950/70 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        className="border-neutral-800 bg-neutral-950/70 text-white placeholder:text-neutral-600 focus:border-cyan-500 focus:ring-cyan-500/20"
                     />
                     <InputError message={errors.password} />
                 </div>
@@ -196,43 +209,58 @@ export default function Login({ status, canResetPassword }: Props) {
                         name="remember"
                         tabIndex={3}
                         checked={data.remember}
-                        onCheckedChange={(checked) => setData('remember', checked === true)}
-                        className="border-neutral-700 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                        onCheckedChange={(checked) =>
+                            setData('remember', checked === true)
+                        }
+                        className="border-neutral-700 data-[state=checked]:border-cyan-500 data-[state=checked]:bg-cyan-500"
                     />
-                    <Label htmlFor="remember" className="text-xs text-neutral-400 cursor-pointer select-none">
+                    <Label
+                        htmlFor="remember"
+                        className="cursor-pointer text-xs text-neutral-400 select-none"
+                    >
                         Remember this device for 30 days
                     </Label>
                 </div>
 
                 <Button
                     type="submit"
-                    className="mt-2 w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-neutral-950 font-semibold shadow-lg shadow-cyan-500/20 transition-all hover:shadow-cyan-500/30"
+                    className="mt-2 w-full bg-gradient-to-r from-cyan-500 to-indigo-600 font-semibold text-neutral-950 shadow-lg shadow-cyan-500/20 transition-all hover:from-cyan-400 hover:to-indigo-500 hover:shadow-cyan-500/30"
                     tabIndex={4}
                     disabled={processing}
                     data-test="login-button"
                 >
-                    {processing ? <Spinner className="text-neutral-950" /> : <ArrowRight className="h-4 w-4 mr-1.5" />}
+                    {processing ? (
+                        <Spinner className="text-neutral-950" />
+                    ) : (
+                        <ArrowRight className="mr-1.5 h-4 w-4" />
+                    )}
                     Sign In to SlotSaver
                 </Button>
 
                 {/* @chisel-registration */}
-                <div className="mt-2 border-t border-neutral-800/80 pt-4 text-center text-xs text-neutral-400 space-y-2">
+                <div className="mt-2 space-y-2 border-t border-neutral-800/80 pt-4 text-center text-xs text-neutral-400">
                     <div>
                         Don't have an account yet?{' '}
                         <TextLink
                             href={register()}
-                            className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                            className="font-medium text-cyan-400 transition-colors hover:text-cyan-300"
                             tabIndex={6}
                         >
                             Create an account
                         </TextLink>
                     </div>
-                    <div className="text-[11px] text-neutral-400 flex items-center justify-center gap-3">
-                        <a href="/register?role=client" className="hover:text-neutral-300 underline">
+                    <div className="flex items-center justify-center gap-3 text-[11px] text-neutral-400">
+                        <a
+                            href="/register?role=client"
+                            className="underline hover:text-neutral-300"
+                        >
                             Register as Client
                         </a>
                         <span>•</span>
-                        <a href="/register?role=owner" className="hover:text-neutral-300 underline">
+                        <a
+                            href="/register?role=owner"
+                            className="underline hover:text-neutral-300"
+                        >
                             Register as Salon Owner
                         </a>
                     </div>
@@ -245,5 +273,6 @@ export default function Login({ status, canResetPassword }: Props) {
 
 Login.layout = {
     title: 'Sign in to SlotSaver',
-    description: 'Access appointment operations, automated waitlists, and ML risk scoring',
+    description:
+        'Access appointment operations, automated waitlists, and ML risk scoring',
 };
