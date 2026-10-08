@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Domain\Booking\Actions\MarkNoShow;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Policies\BookingPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
 class OfflineSyncController extends Controller
 {
@@ -38,7 +38,7 @@ class OfflineSyncController extends Controller
                 continue;
             }
 
-            Gate::authorize('update', $booking);
+            abort_unless((new BookingPolicy)->manageStatus($request->user(), $booking), 403);
 
             if ($item['type'] === 'check_in') {
                 $booking->update([

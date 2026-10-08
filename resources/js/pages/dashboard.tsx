@@ -15,6 +15,7 @@ interface DashboardProps {
     business: {
         id: number;
         name: string;
+        slug?: string | null;
         city: string;
     };
     kpis: {
@@ -139,7 +140,11 @@ export default function Dashboard({
 
                         {/* Public booking preview link */}
                         <a
-                            href="/book"
+                            href={
+                                business.slug
+                                    ? `/book/${business.slug}`
+                                    : '/book'
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-neutral-950 shadow-md shadow-cyan-500/20 transition hover:brightness-110"

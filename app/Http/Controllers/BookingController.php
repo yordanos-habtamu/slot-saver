@@ -9,6 +9,7 @@ use App\Domain\Booking\Exceptions\LocationClosedException;
 use App\Domain\Booking\Exceptions\SlotAlreadyBookedException;
 use App\Domain\Risk\DepositPolicy;
 use App\Domain\Risk\RiskScoreClient;
+use App\Enums\BusinessStatus;
 use App\Models\Booking;
 use App\Models\Business;
 use App\Models\Location;
@@ -32,21 +33,26 @@ class BookingController extends Controller
 
     /**
      * Render the public booking page.
+     *
+     * Without a slug this is the salon directory: every active business and
+     * its services. With a slug it becomes the booking wizard for that salon.
      */
     public function index(?string $slug = null): Response
     {
-        $businessQuery = Business::query()
+        if ($slug === null) {
+            return $this->browse();
+        }
+
+        $business = Business::query()
             ->active()
             ->with([
                 'businessType',
                 'locations.employees',
                 'services.locations',
                 'services.employees',
-            ]);
-
-        $business = $slug
-            ? $businessQuery->where('slug', $slug)->firstOrFail()
-            : $businessQuery->firstOrFail();
+            ])
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         // Unique employees working across all locations
         $employees = $business->locations
@@ -120,6 +126,49 @@ class BookingController extends Controller
                 ]),
                 'employees' => $employees,
             ],
+        ]);
+    }
+
+    /**
+     * The public salon directory: every active business with its services.
+     */
+    protected function browse(): Response
+    {
+        $rows = Business::query()
+            ->withCount('locations')
+            ->with('services')
+            ->where('status', BusinessStatus::Active->value)
+            ->orderBy('name')
+            ->get();
+
+        $businesses = [];
+
+        foreach ($rows as $business) {
+            $businesses[] = [
+                'id' => $business->id,
+                'name' => $business->name,
+                'slug' => $business->slug,
+                'about' => $business->about,
+                'city' => $business->city,
+                'country' => $business->country,
+                'phone' => $business->phone,
+                'location_count' => (int) $business->locations_count,
+                'services' => $business->services
+                    ->where('is_active', true)
+                    ->values()
+                    ->map(fn ($srv): array => [
+                        'id' => $srv->id,
+                        'name' => $srv->name,
+                        'price' => (float) $srv->price,
+                        'duration_minutes' => $srv->duration_minutes,
+                        'category' => $srv->category,
+                        'is_recommended' => $srv->is_recommended,
+                    ]),
+            ];
+        }
+
+        return Inertia::render('booking/browse', [
+            'businesses' => $businesses,
         ]);
     }
 

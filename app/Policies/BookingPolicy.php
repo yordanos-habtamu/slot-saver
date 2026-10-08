@@ -22,6 +22,16 @@ class BookingPolicy
     }
 
     /**
+     * Day-of staff actions (check-in, no-show, WhatsApp reminder) may only be
+     * performed by the business owner or assigned staff — never the platform
+     * admin, who is a superuser but not an operator of any salon.
+     */
+    public function manageStatus(User $user, Booking $booking): bool
+    {
+        return ! $user->isAdmin() && $this->staff($user, $booking);
+    }
+
+    /**
      * A booking can only be cancelled before it has been dealt with.
      */
     public function cancel(User $user, Booking $booking): bool
@@ -44,14 +54,10 @@ class BookingPolicy
     }
 
     /**
-     * The admin, the business owner, or an employee assigned to the booking or its location.
+     * The business owner, or an employee assigned to the booking or its location.
      */
     protected function staff(User $user, Booking $booking): bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
-
         if ($booking->business->owner_user_id === $user->id) {
             return true;
         }
