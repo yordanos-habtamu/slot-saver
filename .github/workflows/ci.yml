@@ -57,7 +57,15 @@ jobs:
           DB_DATABASE: slotsaver_test
           DB_USERNAME: slotsaver_user
           DB_PASSWORD: slotsaver_secret
-        run: php artisan test
+        run: |
+          php artisan test 2>&1 | tee /tmp/phpunit.log
+          status=${PIPESTATUS[0]}
+          [ "$status" -eq 0 ] && exit 0
+          sed -r 's/\x1B\[[0-9;]*[mK]//g' /tmp/phpunit.log \
+            | grep -aE '^[0-9]+\) |Tests: |Failed asserting|FAILURES!' \
+            | head -40 \
+            | sed 's/^/::error::/'
+          exit "$status"
 
   python-risk-service-tests:
     name: Python Risk Microservice Tests
@@ -91,6 +99,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -99,6 +116,9 @@ jobs:
 
       - name: Install npm dependencies
         run: npm ci
+
+      - name: Generate Wayfinder routes and actions
+        run: php artisan wayfinder:generate --with-form
 
       - name: Check TypeScript types
         run: npm run types:check
